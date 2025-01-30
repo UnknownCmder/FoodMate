@@ -49,7 +49,7 @@ async def school_meals(ctx: discord.Interaction):
         if 'mealServiceDietInfo' in data:
             meals_info = data['mealServiceDietInfo'][1]['row'][0]['DDISH_NM']
             meals_info = meals_info.replace('<br/>', '\n')
-            await ctx.response.send_message(f'<학교 급식>\n{meals_info}')
+            await ctx.response.send_message(f'<급식>\n{meals_info}')
         else:
             await ctx.response.send_message(f'No meal information available')
     else:
