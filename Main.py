@@ -41,12 +41,13 @@ async def alertMealInfo():
             print("none of json file")
 
 #도움말 명령어
-@bot.tree.command(name= "help", description="명령어 사용법법")
+@bot.tree.command(name= "help", description="명령어 사용법")
 async def help(ctx: discord.Interaction):
     embed = discord.Embed(title="도움말", description="", color=0xff0000)
-    embed.add_field(name="/schoolmealinfo [교육청 코드] [학교 코드]", value="학교 급식 정보를 확인합니다", inline=False)
+    embed.add_field(name="/schoolmealinfo [교육청 코드] [학교 코드]", value="학교 급식 정보를 확인합니다\n[정확도 높음]", inline=False)
+    embed.add_field(name="/schoolmealinfo_byname [학교 이름]", value="학교 급식 정보를 확인합니다\n[정확도 낮음] (같은 이름의 학교가 존재할 경우 의도와 다른 학교가 검색될 수 있음음)", inline=False)
     embed.add_field(name="/register [교육청 코드] [학교 코드]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다\n[정확도 높음] (채널 1개당 1 학교)", inline=False)
-    embed.add_field(name="/registerschoolname [학교 이름]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다\n[정확도 낮음] (채널 1개당 1 학교 / 같은 이름의 학교가 존재할 경우 의도와 다른 학교가 등록될 수 있음)", inline=False)
+    embed.add_field(name="/register_byname [학교 이름]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다\n[정확도 낮음] (채널 1개당 1 학교 / 같은 이름의 학교가 존재할 경우 의도와 다른 학교가 등록될 수 있음)", inline=False)
     embed.add_field(name="/unregister", value="더 이상 7시마다 급식 정보가 나오지 않게 합니다", inline=False)
     embed.add_field(name="/ping", value="봇의 핑을 확인합니다", inline=False)
 
@@ -59,13 +60,40 @@ async def help(ctx: discord.Interaction):
     await channel.send("링크 : https://open.neis.go.kr/portal/data/service/selectServicePage.do?page=1&sortColumn=&sortDirection=&infId=OPEN17320190722180924242823&infSeq=1&searchWord=%EA%B8%89%EC%8B%9D")
 
 #급식 정보 명령어
-@bot.tree.command(name= "schoolmealinfo", description="급식 정보 확인 명령어어")
+@bot.tree.command(name= "schoolmealinfo", description="급식 정보 확인 명령어")
 @app_commands.describe(office_of_education_code="교육청 코드", school_code="학교 코드")
 async def schoolMealInfo(ctx: discord.Interaction, office_of_education_code: str, school_code: str):
     now = datetime.now()
     current_date = now.strftime("%Y%m%d")
 
     embed = await mi.getMealInfo(office_of_education_code, school_code, current_date)
+    if embed == False:
+        await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
+    else:
+        await ctx.response.send_message(embed=embed)
+
+#급식 정보 명령어 (학교 이름으로 / 정확도 낮음)
+@bot.tree.command(name= "schoolmealinfo_byname", description="급식 정보 확인 명령어")
+@app_commands.describe(school_name= "학교 이름")
+async def schoolMealInfo_byname(ctx: discord.Interaction, school_name: str):
+    office_of_education_code = ""
+    school_code = 0
+
+    getCodeAPI = f"https://open.neis.go.kr/hub/schoolInfo?KEY={iv.NEIS_API_KEY}&Type=json&pIndex=1&SCHUL_NM={school_name}"
+    responseForSchool = requests.get(getCodeAPI)
+    dataForSchool = responseForSchool.json()
+    if 'RESULT' not in dataForSchool:
+        office_of_education_code = dataForSchool['schoolInfo'][1]['row'][0]['ATPT_OFCDC_SC_CODE']
+        school_code = dataForSchool['schoolInfo'][1]['row'][0]['SD_SCHUL_CODE']
+    else:
+        await ctx.response.send_message("존재하지 않는 학교이거나 OPEN API 오류가 발생했습니다.")
+        return
+    
+    now = datetime.now()
+    current_date = now.strftime("%Y%m%d")
+
+    embed = await mi.getMealInfo(office_of_education_code, school_code, current_date)
+    embed.description = "교육청 코드 : " + office_of_education_code + ", 학교 코드 : " + school_code + ")"
     if embed == False:
         await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
     else:
@@ -93,9 +121,9 @@ async def register(ctx: discord.Interaction, office_of_education_code: str, scho
         await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
 
 #학교 등록 명령어 (학교 이름으로 / 정확도 낮음)
-@bot.tree.command(name="registerschoolname", description="학교 이름으로 등록하는 명령어")
+@bot.tree.command(name="register_byname", description="학교 이름으로 등록하는 명령어")
 @app_commands.describe(school_name="학교 이름")
-async def registerschoolname(ctx: discord.Interaction, school_name: str):
+async def register_byname(ctx: discord.Interaction, school_name: str):
     if not ctx.user.guild_permissions.administrator:
         await ctx.response.send_message("관리자 권한이 있어야 이 명령어를 사용할 수 있습니다.", ephemeral=True)
         return
