@@ -74,6 +74,10 @@ async def schoolMealInfo(ctx: discord.Interaction, office_of_education_code: str
 @bot.tree.command(name= "register", description="원하는 학교 등록하는 명령어")
 @app_commands.describe(office_of_education_code="교육청 코드", school_code="학교 코드")
 async def register(ctx: discord.Interaction, office_of_education_code: str, school_code: str):
+    if not ctx.user.guild_permissions.administrator:
+        await ctx.response.send_message("관리자 권한이 있어야 이 명령어를 사용할 수 있습니다.", ephemeral=True)
+        return
+    
     channel_id = ctx.channel.id
 
     apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={iv.NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
@@ -90,6 +94,10 @@ async def register(ctx: discord.Interaction, office_of_education_code: str, scho
 #학교 등록 해제 명령어
 @bot.tree.command(name= "unregister", description="그 채널에 등록되어있는 학교 해제하는 명령어")
 async def unregister(ctx: discord.Interaction):
+    if not ctx.user.guild_permissions.administrator:
+        await ctx.response.send_message("관리자 권한이 있어야 이 명령어를 사용할 수 있습니다.", ephemeral=True)
+        return
+    
     channel_id = ctx.channel.id
     result = await f.deleteIds(channel_id)
     if result:
