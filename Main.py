@@ -40,7 +40,7 @@ async def alertMealInfo():
         except:
             print("none of json file")
 
-#도움말 명령어어
+#도움말 명령어
 @bot.tree.command(name= "help", description="명령어 사용법법")
 async def help(ctx: discord.Interaction):
     embed = discord.Embed(title="도움말", description="", color=0xff0000)
