@@ -70,7 +70,7 @@ async def schoolMealInfo(ctx: discord.Interaction, office_of_education_code: str
     else:
         await ctx.response.send_message(embed=embed)
 
-#학교 등록 명령어어
+#학교 등록 명령어 (교육청 코드와 학교 코드로)
 @bot.tree.command(name= "register", description="원하는 학교 등록하는 명령어")
 @app_commands.describe(office_of_education_code="교육청 코드", school_code="학교 코드")
 async def register(ctx: discord.Interaction, office_of_education_code: str, school_code: str):
@@ -89,6 +89,41 @@ async def register(ctx: discord.Interaction, office_of_education_code: str, scho
         await f.saveIds(channel_id, office_of_education_code, school_code)
         await ctx.response.send_message("등록되었습니다! (등록된 학교 : " + SCHOOL_NAME + ")")
     else: #급식정보가 불러와지지 않으면
+        await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
+
+#학교 등록 명령어 (학교 이름으로 / 정확도 낮음)
+@bot.tree.command(name="registerschoolname", description="학교 이름으로 등록하는 명령어")
+@app_commands.describe(school_name="학교 이름")
+async def registerschool(ctx: discord.Interaction, school_name: str):
+    if not ctx.user.guild_permissions.administrator:
+        await ctx.response.send_message("관리자 권한이 있어야 이 명령어를 사용할 수 있습니다.", ephemeral=True)
+        return
+
+    channel_id = ctx.channel.id
+
+    office_of_education_code = ""
+    school_code = 0
+
+    getCodeAPI = f"https://open.neis.go.kr/hub/schoolInfo?KEY={iv.NEIS_API_KEY}&Type=json&pIndex=1&SCHUL_NM={school_name}"
+    responseForSchool = requests.get(getCodeAPI)
+    dataForSchool = responseForSchool.json()
+    if 'RESULT' not in dataForSchool:
+        office_of_education_code = dataForSchool['schoolInfo'][1]['row'][0]['ATPT_OFCDC_SC_CODE']
+        school_code = dataForSchool['schoolInfo'][1]['row'][0]['SD_SCHUL_CODE']
+    else:
+        await ctx.response.send_message("존재하지 않는 학교이거나 OPEN API 오류가 발생했습니다.")
+        return
+
+
+    apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={iv.NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
+    responseForTitle = requests.get(apiUrlForTitle)
+    dataForTitle = responseForTitle.json()
+
+    if 'RESULT' not in dataForTitle:  # 급식정보가 불러와지면
+        SCHOOL_NAME = dataForTitle['mealServiceDietInfo'][1]['row'][0]['SCHUL_NM']
+        await f.saveIds(channel_id, office_of_education_code, school_code)
+        await ctx.response.send_message("등록되었습니다! (등록된 학교 : " + SCHOOL_NAME + ")")
+    else:  # 급식정보가 불러와지지 않으면
         await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
 
 #학교 등록 해제 명령어
