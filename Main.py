@@ -45,7 +45,8 @@ async def alertMealInfo():
 async def help(ctx: discord.Interaction):
     embed = discord.Embed(title="도움말", description="", color=0xff0000)
     embed.add_field(name="/schoolmealinfo [교육청 코드] [학교 코드]}", value="학교 급식 정보를 확인합니다", inline=False)
-    embed.add_field(name="/register [교육청 코드] [학교 코드]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다 (채널 1개당 1 학교)", inline=False)
+    embed.add_field(name="/register [교육청 코드] [학교 코드]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다\n[정확도 높음] (채널 1개당 1 학교)", inline=False)
+    embed.add_field(name="/registerschoolname [학교 이름]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다\n[정확도 낮음] (채널 1개당 1 학교 / 같은 이름의 학교가 존재할 경우 의도와 다른 학교가 등록될 수 있음)", inline=False)
     embed.add_field(name="/unregister", value="더 이상 7시마다 급식 정보가 나오지 않게 합니다", inline=False)
     embed.add_field(name="/ping", value="봇의 핑을 확인합니다", inline=False)
 
@@ -94,7 +95,7 @@ async def register(ctx: discord.Interaction, office_of_education_code: str, scho
 #학교 등록 명령어 (학교 이름으로 / 정확도 낮음)
 @bot.tree.command(name="registerschoolname", description="학교 이름으로 등록하는 명령어")
 @app_commands.describe(school_name="학교 이름")
-async def registerschool(ctx: discord.Interaction, school_name: str):
+async def registerschoolname(ctx: discord.Interaction, school_name: str):
     if not ctx.user.guild_permissions.administrator:
         await ctx.response.send_message("관리자 권한이 있어야 이 명령어를 사용할 수 있습니다.", ephemeral=True)
         return
