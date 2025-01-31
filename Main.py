@@ -20,7 +20,7 @@ bot = commands.Bot(command_prefix='/', intents= discord.Intents.all()) #접두�
 async def on_ready():
     await bot.tree.sync()
     print(f'{bot.user.name} has connected to Discord!')
-    await bot.change_presence(status=discord.Status.online, activity=discord.Game("테스트중"))
+    await bot.change_presence(status=discord.Status.online, activity=discord.Game("급식메뉴 전파하는 중"))
     alertMealInfo.start()
 
 #7시마다 등록된 학교 급식 정보 알림림
@@ -51,8 +51,11 @@ async def help(ctx: discord.Interaction):
 
     embed.add_field(name="", value="\n", inline=False)
 
-    embed.add_field(name="교육청 & 학교 코드 찾기", value="1. 아래 링크 클릭 후 \"시도교육청코드\"와 \"학교명\"만 입력 후 검색\n2. 검색 결과로 나온 시드에서 \"시도교육청코드(교육청 코드)\"와 \"행정표준코드(학교 코드)\" 확인", inline=False)
+    embed.add_field(name="교육청 & 학교 코드 찾기", value="1. 아래 링크 클릭 후 sheet에서 \"시도교육청코드\"와 \"학교명\"만 입력 후 검색\n2. 검색 결과로 나온 시드에서 \"시도교육청코드(교육청 코드)\"와 \"행정표준코드(학교 코드)\" 확인", inline=False)
     await ctx.response.send_message(embed=embed)
+
+    channel = bot.get_channel(ctx.channel.id)
+    await channel.send("링크 : https://open.neis.go.kr/portal/data/service/selectServicePage.do?page=1&sortColumn=&sortDirection=&infId=OPEN17320190722180924242823&infSeq=1&searchWord=%EA%B8%89%EC%8B%9D")
 
 #급식 정보 명령어
 @bot.tree.command(name= "schoolmealinfo", description="급식 정보 확인 명령어어")
