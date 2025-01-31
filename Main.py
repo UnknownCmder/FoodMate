@@ -123,7 +123,7 @@ async def registerschoolname(ctx: discord.Interaction, school_name: str):
     if 'RESULT' not in dataForTitle:  # 급식정보가 불러와지면
         SCHOOL_NAME = dataForTitle['mealServiceDietInfo'][1]['row'][0]['SCHUL_NM']
         await f.saveIds(channel_id, office_of_education_code, school_code)
-        await ctx.response.send_message("등록되었습니다! (등록된 학교 : " + SCHOOL_NAME + ")")
+        await ctx.response.send_message("등록되었습니다! (등록된 학교 : " + SCHOOL_NAME + " / " + "교육청 코드 : " + office_of_education_code + ", 학교 코드 : " + school_code + ")")
     else:  # 급식정보가 불러와지지 않으면
         await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
 
