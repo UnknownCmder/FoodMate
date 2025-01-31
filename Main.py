@@ -1,60 +1,104 @@
 import discord
 from discord import app_commands
-from discord.ext import commands  
+from discord.ext import commands, tasks
 import requests
+from datetime import datetime
 
-# 토큰을 파일에서 읽어오기  
-def get_token(file_path):  
-    with open(file_path, 'r') as file:  
-        return file.read().strip()  # 불필요한 공백을 제거  
+import MealInfo as mi
+import files as f
 
-# 토큰 파일 경로  
-token_file_path = 'token.txt'  
-token = get_token(token_file_path)  
+import importentValue as iv
+
+#중요한 값 초기화
+iv.token = iv.get_important_value('token.txt')
+iv.NEIS_API_KEY = iv.get_important_value('NEIS_API_KEY.txt')
 
 # Bot 객체 생성  
-bot = commands.Bot(command_prefix="!", intents= discord.Intents.all()) #접두사 '!' or '/'
+bot = commands.Bot(command_prefix='/', intents= discord.Intents.all()) #접두사  '/'
 
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print(f'{bot.user.name} has connected to Discord!')
     await bot.change_presence(status=discord.Status.online, activity=discord.Game("테스트중"))
+    alertMealInfo.start()
 
+#7시마다 등록된 학교 급식 정보 알림림
+@tasks.loop(seconds=1)
+async def alertMealInfo():
+    now = datetime.now()
+    current_date = now.strftime("%Y%m%d")
+    current_time = now.strftime("%H:%M:%S")
+    if current_time == "16:26:00":
+        try:
+            codes = await f.loadIds()
+            for channel_id in codes:
+                code = codes[channel_id]
+                channel = bot.get_channel(int(channel_id))
+                embed = await mi.getMealInfo(code["office_of_education_code"], code["school_code"], current_date)
+                await channel.send(embed= embed)
+        except:
+            print("none of json file")
 
+#도움말 명령어어
+@bot.tree.command(name= "help", description="명령어 사용법법")
+async def help(ctx: discord.Interaction):
+    embed = discord.Embed(title="도움말", description="", color=0xff0000)
+    embed.add_field(name="/schoolmealinfo [교육청 코드] [학교 코드]}", value="학교 급식 정보를 확인합니다", inline=False)
+    embed.add_field(name="/register [교육청 코드] [학교 코드]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다 (채널 1개당 1 학교)", inline=False)
+    embed.add_field(name="/unregister", value="더 이상 7시마다 급식 정보가 나오지 않게 합니다", inline=False)
+    embed.add_field(name="/ping", value="봇의 핑을 확인합니다", inline=False)
 
-#테스트
-@bot.tree.command(name= "hello", description= "welcome")
-async def hello(ctx: discord.Interaction):  
-    await ctx.response.send_message(f'Hello!')
-    await ctx.followup.send("hi")
+    embed.add_field(name="", value="\n", inline=False)
 
+    embed.add_field(name="교육청 & 학교 코드 찾기", value="1. 아래 링크 클릭 후 \"시도교육청코드\"와 \"학교명\"만 입력 후 검색\n2. 검색 결과로 나온 시드에서 \"시도교육청코드(교육청 코드)\"와 \"행정표준코드(학교 코드)\" 확인", inline=False)
+    await ctx.response.send_message(embed=embed)
 
-NEIS_API_KEY = '2ba1e0e538ba4082984d45933c3e015e' # NEIS API 키
-ATPT_OFCDC_SC_CODE = 'S10' # 교육청 코드(경남)
-SD_SCHUL_CODE = 9010050 # 학교 코드(명신고)
-MMEAL_SC_CODE = 2 # 급식 종류 코드(중식)
+#급식 정보 명령어
+@bot.tree.command(name= "schoolmealinfo", description="급식 정보 확인 명령어어")
+@app_commands.describe(office_of_education_code="교육청 코드", school_code="학교 코드")
+async def schoolMealInfo(ctx: discord.Interaction, office_of_education_code: str, school_code: str):
+    now = datetime.now()
+    current_date = now.strftime("%Y%m%d")
 
-@bot.tree.command(name="school_meals", description="Get information about school meals")
-async def school_meals(ctx: discord.Interaction):
-    MLSV_YMD = 20240405 # 날짜(YYYYMMDD) / 2025년 3월 5일(나중에는 오늘 날짜로 변경)
-
-    api_url = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE={SD_SCHUL_CODE}&MMEAL_SC_CODE={MMEAL_SC_CODE}&MLSV_YMD={MLSV_YMD}"
-    response = requests.get(api_url)
-    
-    if response.status_code == 200:
-        data = response.json()
-            #await ctx.response.send_message(f'School meals: {meals_info}')
-        print(data)
-        if 'mealServiceDietInfo' in data:
-            meals_info = data['mealServiceDietInfo'][1]['row'][0]['DDISH_NM']
-            meals_info = meals_info.replace('<br/>', '\n')
-            await ctx.response.send_message(f'<급식>\n{meals_info}')
-        else:
-            await ctx.response.send_message(f'No meal information available')
+    embed = await mi.getMealInfo(office_of_education_code, school_code, current_date)
+    if embed == False:
+        await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
     else:
-        await ctx.response.send_message(f'Failed to retrieve information')
+        await ctx.response.send_message(embed=embed)
+
+#학교 등록 명령어어
+@bot.tree.command(name= "register", description="원하는 학교 등록하는 명령어")
+@app_commands.describe(office_of_education_code="교육청 코드", school_code="학교 코드")
+async def register(ctx: discord.Interaction, office_of_education_code: str, school_code: str):
+    channel_id = ctx.channel.id
+
+    apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={iv.NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
+    responseForTitle = requests.get(apiUrlForTitle)
+    dataForTitle = responseForTitle.json()
+
+    if 'RESULT' not in dataForTitle: #급식정보가 불러와지면
+        SCHOOL_NAME = dataForTitle['mealServiceDietInfo'][1]['row'][0]['SCHUL_NM']
+        await f.saveIds(channel_id, office_of_education_code, school_code)
+        await ctx.response.send_message("등록되었습니다! (등록된 학교 : " + SCHOOL_NAME + ")")
+    else: #급식정보가 불러와지지 않으면
+        await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
+
+#학교 등록 해제 명령어
+@bot.tree.command(name= "unregister", description="그 채널에 등록되어있는 학교 해제하는 명령어")
+async def unregister(ctx: discord.Interaction):
+    channel_id = ctx.channel.id
+    result = await f.deleteIds(channel_id)
+    if result:
+        await ctx.response.send_message("등록이 취소되었습니다")
+    else:
+        await ctx.response.send_message("이 채널에는 등록되어있는 학교가 없습니다")
+
+#핑 확인 명령어
+@bot.tree.command(name= "ping", description="봇의 핑 확인 명령어")
+async def ping(ctx: discord.Interaction):
+    await ctx.response.send_message(f'Ping : {round(bot.latency * 1000)}ms')
 
 
 # 봇 실행  
-bot.run(token)  # 'your_token_here'를 실제 봇 토큰으로 교체
+bot.run(iv.token)  # 'your_token_here'를 실제 봇 토큰으로 교체
