@@ -44,7 +44,7 @@ async def alertMealInfo():
 @bot.tree.command(name= "help", description="명령어 사용법법")
 async def help(ctx: discord.Interaction):
     embed = discord.Embed(title="도움말", description="", color=0xff0000)
-    embed.add_field(name="/schoolmealinfo [교육청 코드] [학교 코드]}", value="학교 급식 정보를 확인합니다", inline=False)
+    embed.add_field(name="/schoolmealinfo [교육청 코드] [학교 코드]", value="학교 급식 정보를 확인합니다", inline=False)
     embed.add_field(name="/register [교육청 코드] [학교 코드]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다\n[정확도 높음] (채널 1개당 1 학교)", inline=False)
     embed.add_field(name="/registerschoolname [학교 이름]", value="현재 채널에서 7시마다 급식 정보가 나오게 합니다\n[정확도 낮음] (채널 1개당 1 학교 / 같은 이름의 학교가 존재할 경우 의도와 다른 학교가 등록될 수 있음)", inline=False)
     embed.add_field(name="/unregister", value="더 이상 7시마다 급식 정보가 나오지 않게 합니다", inline=False)
