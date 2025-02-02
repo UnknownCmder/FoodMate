@@ -29,7 +29,7 @@ async def alertMealInfo():
     now = datetime.now()
     current_date = now.strftime("%Y%m%d")
     current_time = now.strftime("%H:%M:%S")
-    if current_time == "16:26:00":
+    if current_time == "07:00:00":
         try:
             codes = await f.loadIds()
             for channel_id in codes:
