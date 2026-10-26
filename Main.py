@@ -1,35 +1,37 @@
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
+
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 import requests
 from datetime import datetime
+import pytz
 
 import MealInfo as mi
 import files as f
-
-import importentValue as iv
-
-#중요한 값 초기화
-iv.token = iv.get_important_value('token.txt')
-iv.NEIS_API_KEY = iv.get_important_value('NEIS_API_KEY.txt')
 
 # Bot 객체 생성  
 bot = commands.Bot(command_prefix='/', intents= discord.Intents.all()) #접두사  '/'
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
+    synced = await bot.tree.sync()
+    print(f"Synced {len(synced)} application commands")
     print(f'{bot.user.name} has connected to Discord!')
     await bot.change_presence(status=discord.Status.online, activity=discord.Game("급식메뉴 전파하는 중"))
-    alertMealInfo.start()
+    if not alertMealInfo.is_running():
+        alertMealInfo.start()
 
 #7시마다 등록된 학교 급식 정보 알림림
 @tasks.loop(seconds=1)
 async def alertMealInfo():
-    now = datetime.now()
+    now = datetime.now(pytz.timezone('Asia/Seoul'))
     current_date = now.strftime("%Y%m%d")
     current_time = now.strftime("%H:%M:%S")
-    if current_time == "16:26:00":
+    if current_time == "07:00:00":
         try:
             codes = await f.loadIds()
             for channel_id in codes:
@@ -37,8 +39,8 @@ async def alertMealInfo():
                 channel = bot.get_channel(int(channel_id))
                 embed = await mi.getMealInfo(code["office_of_education_code"], code["school_code"], current_date)
                 await channel.send(embed= embed)
-        except:
-            print("none of json file")
+        except Exception as error:
+            print(f"급식 알림 오류: {error}")
 
 #도움말 명령어
 @bot.tree.command(name= "help", description="명령어 사용법")
@@ -79,7 +81,7 @@ async def schoolMealInfo_byname(ctx: discord.Interaction, school_name: str):
     office_of_education_code = ""
     school_code = 0
 
-    getCodeAPI = f"https://open.neis.go.kr/hub/schoolInfo?KEY={iv.NEIS_API_KEY}&Type=json&pIndex=1&SCHUL_NM={school_name}"
+    getCodeAPI = f"https://open.neis.go.kr/hub/schoolInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&pIndex=1&SCHUL_NM={school_name}"
     responseForSchool = requests.get(getCodeAPI)
     dataForSchool = responseForSchool.json()
     if 'RESULT' not in dataForSchool:
@@ -93,10 +95,10 @@ async def schoolMealInfo_byname(ctx: discord.Interaction, school_name: str):
     current_date = now.strftime("%Y%m%d")
 
     embed = await mi.getMealInfo(office_of_education_code, school_code, current_date)
-    embed.description = "교육청 코드 : " + office_of_education_code + ", 학교 코드 : " + school_code + ")"
     if embed == False:
         await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
     else:
+        embed.description = f"교육청 코드 : {office_of_education_code}, 학교 코드 : {school_code}"
         await ctx.response.send_message(embed=embed)
 
 #학교 등록 명령어 (교육청 코드와 학교 코드로)
@@ -109,7 +111,7 @@ async def register(ctx: discord.Interaction, office_of_education_code: str, scho
     
     channel_id = ctx.channel.id
 
-    apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={iv.NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
+    apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
     responseForTitle = requests.get(apiUrlForTitle)
     dataForTitle = responseForTitle.json()
 
@@ -133,7 +135,7 @@ async def register_byname(ctx: discord.Interaction, school_name: str):
     office_of_education_code = ""
     school_code = 0
 
-    getCodeAPI = f"https://open.neis.go.kr/hub/schoolInfo?KEY={iv.NEIS_API_KEY}&Type=json&pIndex=1&SCHUL_NM={school_name}"
+    getCodeAPI = f"https://open.neis.go.kr/hub/schoolInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&pIndex=1&SCHUL_NM={school_name}"
     responseForSchool = requests.get(getCodeAPI)
     dataForSchool = responseForSchool.json()
     if 'RESULT' not in dataForSchool:
@@ -144,14 +146,14 @@ async def register_byname(ctx: discord.Interaction, school_name: str):
         return
 
 
-    apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={iv.NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
+    apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
     responseForTitle = requests.get(apiUrlForTitle)
     dataForTitle = responseForTitle.json()
 
     if 'RESULT' not in dataForTitle:  # 급식정보가 불러와지면
         SCHOOL_NAME = dataForTitle['mealServiceDietInfo'][1]['row'][0]['SCHUL_NM']
         await f.saveIds(channel_id, office_of_education_code, school_code)
-        await ctx.response.send_message("등록되었습니다! (등록된 학교 : " + SCHOOL_NAME + " / " + "교육청 코드 : " + office_of_education_code + ", 학교 코드 : " + school_code + ")")
+        await ctx.response.send_message(f"등록되었습니다! (등록된 학교 : {SCHOOL_NAME} / 교육청 코드 : {office_of_education_code}, 학교 코드 : {school_code})")
     else:  # 급식정보가 불러와지지 않으면
         await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
 
@@ -176,4 +178,4 @@ async def ping(ctx: discord.Interaction):
 
 
 # 봇 실행  
-bot.run(iv.token)  # 'your_token_here'를 실제 봇 토큰으로 교체
+bot.run(os.getenv('TOKEN'))  # 'your_token_here'를 실제 봇 토큰으로 교체

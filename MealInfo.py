@@ -1,10 +1,12 @@
 import discord
 import requests
-import importentValue as iv
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 #급식 정보 가져오기
 async def getMealInfo(office_of_education_code: str, school_code: str, day: int):
-    apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={iv.NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
+    apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
     responseForTitle = requests.get(apiUrlForTitle)
     dataForTitle = responseForTitle.json()
 
@@ -14,7 +16,7 @@ async def getMealInfo(office_of_education_code: str, school_code: str, day: int)
     embed = discord.Embed(title=f"<{SCHOOL_NAME} 급식  ({day})>", color=0xff0000)
 
     for mealTypeNum in range(1, 4):  # 1: 조식, 2: 중식, 3: 석식
-        api_url = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={iv.NEIS_API_KEY}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}&MMEAL_SC_CODE={mealTypeNum}&MLSV_YMD={day}"
+        api_url = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}&MMEAL_SC_CODE={mealTypeNum}&MLSV_YMD={day}"
         response = requests.get(api_url)
 
         mealTypeName = ""
