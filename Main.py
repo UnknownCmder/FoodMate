@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -78,28 +79,31 @@ async def schoolMealInfo(ctx: discord.Interaction, office_of_education_code: str
 @bot.tree.command(name= "schoolmealinfo_byname", description="급식 정보 확인 명령어")
 @app_commands.describe(school_name= "학교 이름")
 async def schoolMealInfo_byname(ctx: discord.Interaction, school_name: str):
-    office_of_education_code = ""
-    school_code = 0
+    await ctx.response.defer(thinking=True)
 
-    getCodeAPI = f"https://open.neis.go.kr/hub/schoolInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&pIndex=1&SCHUL_NM={school_name}"
-    responseForSchool = requests.get(getCodeAPI)
-    dataForSchool = responseForSchool.json()
-    if 'RESULT' not in dataForSchool:
-        office_of_education_code = dataForSchool['schoolInfo'][1]['row'][0]['ATPT_OFCDC_SC_CODE']
-        school_code = dataForSchool['schoolInfo'][1]['row'][0]['SD_SCHUL_CODE']
-    else:
-        await ctx.response.send_message("존재하지 않는 학교이거나 OPEN API 오류가 발생했습니다.")
+    get_code_api = f"https://open.neis.go.kr/hub/schoolInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&pIndex=1&SCHUL_NM={school_name}"
+    try:
+        response = await asyncio.to_thread(requests.get, get_code_api, timeout=10)
+        data = response.json()
+        if 'RESULT' in data or 'schoolInfo' not in data or not data['schoolInfo'][1]['row']:
+            await ctx.edit_original_response(content="존재하지 않는 학교이거나 OPEN API 오류가 발생했습니다.")
+            return
+
+        school = data['schoolInfo'][1]['row'][0]
+        office_of_education_code = school['ATPT_OFCDC_SC_CODE']
+        school_code = school['SD_SCHUL_CODE']
+
+        current_date = datetime.now().strftime("%Y%m%d")
+        embed = await mi.getMealInfo(office_of_education_code, school_code, current_date)
+        if embed is False:
+            await ctx.edit_original_response(content="급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
+        else:
+            embed.description = f"교육청 코드 : {office_of_education_code}, 학교 코드 : {school_code}"
+            await ctx.edit_original_response(content=None, embed=embed)
+    except (requests.RequestException, ValueError, KeyError, IndexError) as error:
+        print(f"학교명 급식 조회 오류: {error}")
+        await ctx.edit_original_response(content="학교 정보를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
         return
-    
-    now = datetime.now()
-    current_date = now.strftime("%Y%m%d")
-
-    embed = await mi.getMealInfo(office_of_education_code, school_code, current_date)
-    if embed == False:
-        await ctx.response.send_message("급식정보가 불러와지지 않습니다. (학교 코드나 교육청 코드를 확인해주세요)")
-    else:
-        embed.description = f"교육청 코드 : {office_of_education_code}, 학교 코드 : {school_code}"
-        await ctx.response.send_message(embed=embed)
 
 #학교 등록 명령어 (교육청 코드와 학교 코드로)
 @bot.tree.command(name= "register", description="원하는 학교 등록하는 명령어")
