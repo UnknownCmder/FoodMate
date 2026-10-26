@@ -1,3 +1,4 @@
+import asyncio
 import discord
 import requests
 import os
@@ -7,7 +8,7 @@ load_dotenv()
 #급식 정보 가져오기
 async def getMealInfo(office_of_education_code: str, school_code: str, day: int):
     apiUrlForTitle = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}"
-    responseForTitle = requests.get(apiUrlForTitle)
+    responseForTitle = await asyncio.to_thread(requests.get, apiUrlForTitle, timeout=10)
     dataForTitle = responseForTitle.json()
 
     if 'RESULT' in dataForTitle: return False #급식정보가 불러와지지 않으면 False 반환
@@ -17,7 +18,7 @@ async def getMealInfo(office_of_education_code: str, school_code: str, day: int)
 
     for mealTypeNum in range(1, 4):  # 1: 조식, 2: 중식, 3: 석식
         api_url = f"https://open.neis.go.kr/hub/mealServiceDietInfo?KEY={os.getenv('NEIS_API_KEY')}&Type=json&ATPT_OFCDC_SC_CODE={office_of_education_code}&SD_SCHUL_CODE={school_code}&MMEAL_SC_CODE={mealTypeNum}&MLSV_YMD={day}"
-        response = requests.get(api_url)
+        response = await asyncio.to_thread(requests.get, api_url, timeout=10)
 
         mealTypeName = ""
         if mealTypeNum == 1: mealTypeName = "조식"
