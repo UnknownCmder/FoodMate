@@ -14,6 +14,8 @@ import pytz
 import MealInfo as mi
 import files as f
 
+last_alert_date = '' # 마지막으로 알림을 보낸 날짜를 저장하는 변수
+
 # Bot 객체 생성  
 bot = commands.Bot(command_prefix='/', intents= discord.Intents.all()) #접두사  '/'
 
@@ -29,19 +31,36 @@ async def on_ready():
 #7시마다 등록된 학교 급식 정보 알림림
 @tasks.loop(seconds=1)
 async def alertMealInfo():
+    global last_alert_date
+
     now = datetime.now(pytz.timezone('Asia/Seoul'))
     current_date = now.strftime("%Y%m%d")
     current_time = now.strftime("%H:%M:%S")
-    if current_time == "07:00:00":
-        try:
-            codes = await f.loadIds()
-            for channel_id in codes:
-                code = codes[channel_id]
-                channel = bot.get_channel(int(channel_id))
-                embed = await mi.getMealInfo(code["office_of_education_code"], code["school_code"], current_date)
-                await channel.send(embed= embed)
-        except Exception as error:
-            print(f"급식 알림 오류: {error}")
+
+    # 오전 7시 이후인지 확인
+    if now.hour < 7:
+        return
+
+    # 오늘 이미 알림을 보냈다면 종료
+    if last_alert_date == current_date:
+        return
+    
+    try:
+        codes = await f.loadIds()
+        for channel_id in codes:
+            code = codes[channel_id]
+            channel = bot.get_channel(int(channel_id))
+
+            if channel is None:
+                print(f"채널을 찾을 수 없음: {channel_id}")
+                continue
+
+            embed = await mi.getMealInfo(code["office_of_education_code"], code["school_code"], current_date)
+            await channel.send(embed= embed)
+
+            last_alert_date = current_date
+    except Exception as error:
+        print(f"급식 알림 오류: {error}")
 
 #도움말 명령어
 @bot.tree.command(name= "help", description="명령어 사용법")
