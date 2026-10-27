@@ -35,7 +35,6 @@ async def alertMealInfo():
 
     now = datetime.now(pytz.timezone('Asia/Seoul'))
     current_date = now.strftime("%Y%m%d")
-    current_time = now.strftime("%H:%M:%S")
 
     # 오전 7시 이후인지 확인
     if now.hour < 7:
@@ -58,7 +57,7 @@ async def alertMealInfo():
             embed = await mi.getMealInfo(code["office_of_education_code"], code["school_code"], current_date)
             await channel.send(embed= embed)
 
-            last_alert_date = current_date
+        last_alert_date = current_date
     except Exception as error:
         print(f"급식 알림 오류: {error}")
 
