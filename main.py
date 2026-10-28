@@ -45,7 +45,7 @@ async def alertMealInfo():
         return
     
     try:
-        codes = await f.loadIds()
+        codes = await f.loadIds(bot)
         for channel_id in codes:
             code = codes[channel_id]
             channel = bot.get_channel(int(channel_id))

@@ -36,18 +36,37 @@ async def saveIds(channel_id: int, office_of_education_code: str, school_code: s
 
 
 # 채널에 등록된 교육청 코드와 학교 코드를 불러오기
-async def loadIds():
+async def loadIds(bot=None):
     with _connect() as connection:
         rows = connection.execute(
             "SELECT channel_id, office_of_education_code, school_code FROM school"
         ).fetchall()
-    return {
-        str(row["channel_id"]): {
+
+    ids = {}
+    for row in rows:
+        channel_id = int(row["channel_id"])
+
+        if bot is not None:
+            # 캐시에서 찾을 수 없는 경우에만 API로 확인한다.
+            # NotFound 응답을 받은 경우에만 해당 등록을 삭제한다.
+            if bot.get_channel(channel_id) is None:
+                try:
+                    await bot.fetch_channel(channel_id)
+                except Exception as error:
+                    import discord
+
+                    if isinstance(error, discord.NotFound):
+                        await deleteIds(channel_id)
+                        continue
+                    print(f"채널 ID {channel_id} 확인 중 오류 발생: {error}")
+                    raise
+
+        ids[str(channel_id)] = {
             "office_of_education_code": row["office_of_education_code"],
             "school_code": int(row["school_code"]),
         }
-        for row in rows
-    }
+
+    return ids
 
 
 # 채널에 등록된 교육청 코드와 학교 코드를 삭제
